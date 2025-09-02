@@ -2,10 +2,21 @@ function dmsToDecimal(input) {
   // Store the sign of the input
   const sign = input < 0 ? -1 : 1;
   const absInput = Math.abs(input);
-  const dm = absInput / 100;
-  const seconds = absInput % 100;
-  const degrees = Math.floor(dm / 100);
-  const minutes = Math.floor(dm % 100);
+  const str = String(absInput);
+
+  // Extract degrees, minutes, and seconds based on the string length
+  let degrees, minutes, seconds;
+  if (str.length === 6) {
+    degrees = parseInt(str.slice(0, 2));
+    minutes = parseInt(str.slice(2, 4));
+    seconds = parseInt(str.slice(4, 6));
+  } else if (str.length === 7) {
+    degrees = parseInt(str.slice(0, 3));
+    minutes = parseInt(str.slice(3, 5));
+    seconds = parseInt(str.slice(5, 7));
+  } else {
+    throw new Error("Invalid input format. Must be 6 or 7 digits.");
+  }
 
   // Calculate the decimal value from the absolute numbers
   const decimalValue = degrees + minutes / 60 + seconds / 3600;
@@ -28,47 +39,30 @@ const knownPoints = {
   BMP: [dmsToDecimal(1442620), dmsToDecimal(-374030)],
   TON: [dmsToDecimal(1444519), dmsToDecimal(-375119)],
   WMS: [dmsToDecimal(1445440), dmsToDecimal(-375210)],
-  APL: [dmsToDecimal(1445830), dmsToDecimal(-375210)],
-  WBER: [dmsToDecimal(1443830), dmsToDecimal(-375400)],
-  YMAV: [dmsToDecimal(1442810), dmsToDecimal(-380222)],
-  YOLA: [dmsToDecimal(1434047), dmsToDecimal(-381711)],
-  YWBL: [dmsToDecimal(1422648), dmsToDecimal(-381743)],
-  PIPS: [dmsToDecimal(1443800), dmsToDecimal(-381736)],
-  MHT: [dmsToDecimal(1445900), dmsToDecimal(-381900)],
-  CARR: [dmsToDecimal(1450710), dmsToDecimal(-380427)],
 };
 
-// NAV.3
+// NAV.2
 const routeCoordinates = [
   knownPoints.YMMB,
-  knownPoints.APL,
+  knownPoints.SGSV,
+  knownPoints.KIM,
+  knownPoints.YBDG,
+  knownPoints.KTN,
+  knownPoints.BMP,
   knownPoints.TON,
-  knownPoints.WBER,
-  knownPoints.YMAV,
-  knownPoints.YOLA,
-  knownPoints.YWBL,
-  knownPoints.PIPS,
-  knownPoints.MHT,
-  knownPoints.CARR,
+  knownPoints.WMS,
   knownPoints.YMMB,
 ];
 
-const airfields = [
-  knownPoints.YMMB,
-  knownPoints.YOLA,
-  knownPoints.YWBL,
-  knownPoints.YMAV,
-];
+const airfields = [knownPoints.YMMB, knownPoints.YBDG];
 
 var map = new maplibregl.Map({
   container: "map", // container id
-  zoom: 14,
+  zoom: 12,
   center: knownPoints.YMMB,
   pitch: 60,
-  bearing: turf.bearing(
-    turf.point(routeCoordinates[0]),
-    turf.point(routeCoordinates[1])
-  ),
+  // pitch: 0,
+  bearing: 16,
   maxZoom: 18,
   maxPitch: 85,
 });
@@ -110,7 +104,7 @@ map.setStyle(
 
       return nextStyle;
     },
-  }
+  },
 );
 
 map.addControl(
@@ -118,14 +112,14 @@ map.addControl(
     visualizePitch: true,
     showZoom: true,
     showCompass: true,
-  })
+  }),
 );
 
 map.addControl(
   new maplibregl.TerrainControl({
     source: "terrainSource",
     exaggeration: 1,
-  })
+  }),
 );
 
 map.on("load", () => {
@@ -158,18 +152,16 @@ map.on("load", () => {
     },
   });
 
-  airfields
-    .filter((ent) => ent !== knownPoints.YMMB)
-    .map((pt, idx) => {
-      const centerPoint = turf.point(pt); // Your given point [longitude, latitude]
+  airfields.map((pt, idx) => {
+    const centerPoint = turf.point(pt); // Your given point [longitude, latitude]
 
-      addCircle(centerPoint, 10, idx);
+    addCircle(centerPoint, 10, idx);
 
-      // Optionally, add a marker for the center point
-      new maplibregl.Marker()
-        .setLngLat(centerPoint.geometry.coordinates)
-        .addTo(map);
-    });
+    // Optionally, add a marker for the center point
+    new maplibregl.Marker()
+      .setLngLat(centerPoint.geometry.coordinates)
+      .addTo(map);
+  });
 
   addCircle(turf.point(knownPoints.YMMB), 3, "ymmb.3nm");
 
@@ -177,179 +169,7 @@ map.on("load", () => {
   for (let i = 0; i < routeCoordinates.length - 1; i++) {
     addHalfWayLine(routeCoordinates[i], routeCoordinates[i + 1], i);
   }
-
-  // Create flight simulator controller
-  window.flightSim = new FlightSimulator(routeCoordinates, {
-    zoom: 14,
-    speedNm: 0.2,
-    pitch: 60,
-  });
-  // To start: window.flightSim.start()
-  // To pause: window.flightSim.pause()
-  // To step: window.flightSim.step()
 });
-
-// FlightSimulator controller for start, pause, and step functionality
-class FlightSimulator {
-  constructor(route, options = {}) {
-    this.route = route;
-    this.pitch = options.pitch || 52;
-    this.zoom = options.zoom || 10.7;
-    this.speedNm = options.speedNm || 0.2;
-    this.segmentDistances = [];
-    this.cumulativeDistances = [0];
-    this.totalDistance = 0;
-    for (let i = 0; i < route.length - 1; i++) {
-      const from = turf.point(route[i]);
-      const to = turf.point(route[i + 1]);
-      const dist = turf.distance(from, to, { units: "nauticalmiles" });
-      this.segmentDistances.push(dist);
-      this.totalDistance += dist;
-      this.cumulativeDistances.push(this.totalDistance);
-    }
-    this.distanceTraveled = 0;
-    this.running = false;
-    this._frame = null;
-  }
-
-  interpolateCoord(coord1, coord2, t) {
-    return [
-      coord1[0] + (coord2[0] - coord1[0]) * t,
-      coord1[1] + (coord2[1] - coord1[1]) * t,
-    ];
-  }
-
-  _moveMap() {
-    let seg = 0;
-    while (
-      seg < this.segmentDistances.length &&
-      this.cumulativeDistances[seg + 1] < this.distanceTraveled
-    ) {
-      seg++;
-    }
-    if (seg >= this.segmentDistances.length) {
-      seg = this.segmentDistances.length - 1;
-    }
-    const segStartDist = this.cumulativeDistances[seg];
-    const segLength = this.segmentDistances[seg];
-    const t =
-      segLength === 0 ? 0 : (this.distanceTraveled - segStartDist) / segLength;
-    const from = this.route[seg];
-    const to = this.route[seg + 1];
-    const position = this.interpolateCoord(from, to, t);
-    const bearing = turf.bearing(turf.point(from), turf.point(to));
-    map.easeTo({
-      center: position,
-      pitch: this.pitch,
-      bearing: bearing,
-      zoom: this.zoom,
-      duration: 500, // Used for step, not for running animation
-      essential: true,
-    });
-  }
-
-  // Animate smoothly along each leg, waiting for moveend before next leg
-  _animateLeg(seg) {
-    if (!this.running || seg >= this.route.length - 1) {
-      this.running = false;
-      return;
-    }
-    const from = this.route[seg];
-    const to = this.route[seg + 1];
-    const dist = this.segmentDistances[seg];
-    // Duration in ms: time = distance / speedNm * 1000
-    const duration = (dist / this.speedNm) * 1000;
-    map.setBearing(turf.bearing(turf.point(from), turf.point(to)));
-    map.easeTo({
-      center: to,
-      pitch: this.pitch,
-      bearing: turf.bearing(turf.point(from), turf.point(to)),
-      zoom: this.zoom,
-      duration: duration,
-      essential: true,
-    });
-    // Wait for movement to finish before next leg
-    map.once("moveend", () => {
-      if (this.running) {
-        this.distanceTraveled = this.cumulativeDistances[seg + 1];
-        this._animateLeg(seg + 1);
-      }
-    });
-  }
-
-  start() {
-    if (this.running) return;
-    this.running = true;
-    // Find current segment based on distanceTraveled
-    let seg = 0;
-    while (
-      seg < this.segmentDistances.length &&
-      this.cumulativeDistances[seg + 1] < this.distanceTraveled
-    ) {
-      seg++;
-    }
-    this._animateLeg(seg);
-  }
-
-  stop() {
-    this.running = false;
-    map.stop();
-  }
-
-  step(forward = true) {
-    if (this.running) return;
-    if (this.distanceTraveled < this.totalDistance) {
-      this.distanceTraveled += (forward ? 1 : -1) * this.speedNm;
-      this._moveMap();
-    }
-  }
-
-  reset() {
-    this.pause();
-    this.distanceTraveled = 0;
-    this._moveMap();
-  }
-
-  // Move to the nearest point on the route to the current map center
-  moveToNearestOnPath() {
-    const center = map.getCenter();
-    const centerCoord = [center.lng, center.lat];
-    let minDist = Infinity;
-    let nearestSeg = 0;
-    let nearestT = 0;
-    // Search each segment for closest point
-    for (let i = 0; i < this.route.length - 1; i++) {
-      const from = this.route[i];
-      const to = this.route[i + 1];
-      // Project centerCoord onto segment
-      const dx = to[0] - from[0];
-      const dy = to[1] - from[1];
-      const segLenSq = dx * dx + dy * dy;
-      let t =
-        segLenSq === 0
-          ? 0
-          : ((centerCoord[0] - from[0]) * dx +
-              (centerCoord[1] - from[1]) * dy) /
-            segLenSq;
-      t = Math.max(0, Math.min(1, t));
-      const proj = [from[0] + dx * t, from[1] + dy * t];
-      // Use turf.distance for accuracy
-      const dist = turf.distance(turf.point(centerCoord), turf.point(proj), {
-        units: "nauticalmiles",
-      });
-      if (dist < minDist) {
-        minDist = dist;
-        nearestSeg = i;
-        nearestT = t;
-      }
-    }
-    // Compute cumulative distance to this point
-    const segStartDist = this.cumulativeDistances[nearestSeg];
-    const segLength = this.segmentDistances[nearestSeg];
-    this.distanceTraveled = segStartDist + segLength * nearestT;
-    this._moveMap();
-  }
-}
 
 function addCircle(centerPoint, radius, idx) {
   const options = { steps: 128, units: "nauticalmiles" }; // More steps for a smoother circle
@@ -422,12 +242,12 @@ function addHalfWayLine(point1, point2, id) {
   const point1nm = getPointAtBearingAndDistance(
     midPoint,
     perpendicularBearing1,
-    5
+    5,
   );
   const point2nm = getPointAtBearingAndDistance(
     midPoint,
     perpendicularBearing2,
-    5
+    5,
   );
 
   // Create the half-way line
@@ -473,7 +293,7 @@ function addHalfWayLine(point1, point2, id) {
     // Calculate correction using 1-in-60 rule: (distance traveled * distance off course) / 60
     const distanceOffCourse = Math.abs(i); // distance in nm from the route
     const correction = Math.ceil(
-      2 * (distanceOffCourse / (routeDistance / 2)) * 60
+      2 * (distanceOffCourse / (routeDistance / 2)) * 60,
     );
 
     // Add a circle marker for each nm point
