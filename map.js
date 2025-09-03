@@ -31,7 +31,67 @@ const routes = {
     knownPoints.CARR,
     knownPoints.YMMB,
   ],
+  NAV4: [
+    knownPoints.YMMB,
+    knownPoints.YLTV,
+    knownPoints.YYRM,
+    knownPoints.YLEG,
+    knownPoints.GMH,
+    knownPoints.YMMB,
+  ],
+  NAV5: [
+    knownPoints.YMMB,
+    knownPoints.YLTV,
+    knownPoints.YLEG,
+    knownPoints.YMMB,
+  ],
+  NAV6: [
+    knownPoints.YMMB,
+    knownPoints.APL,
+    knownPoints.YMEN,
+    knownPoints.CARE,
+    knownPoints.YMMB,
+  ],
+  NAV7: [
+    knownPoints.YMMB,
+    knownPoints.YMEN,
+    knownPoints.YBSS,
+    knownPoints.YBLT,
+    knownPoints.YOLA,
+    knownPoints.YMAV,
+    knownPoints.YMMB,
+  ],
+  NAV8: [
+    knownPoints.YMMB,
+    knownPoints.YMEN,
+    knownPoints.YSHT,
+    knownPoints.YMFD,
+    knownPoints.YMNG,
+    knownPoints.YMMB,
+  ],
+  NAV9: [
+    knownPoints.YMMB,
+    knownPoints.YSHT,
+    knownPoints.YBDG,
+    knownPoints.YMMB,
+  ],
+  NAV10: [
+    knownPoints.YMMB,
+    knownPoints.YMEN,
+    knownPoints.YBDG,
+    knownPoints.YSTA,
+    knownPoints.YMBU,
+    knownPoints.YMMB,
+  ],
 };
+
+Object.entries(routes).forEach(([key, pts]) =>
+  pts.forEach((pt, idx) => {
+    if (!pt) {
+      console.warn(`${key} has invalid point at idx ${idx + 1}`);
+    }
+  })
+);
 
 function getAirfieldsForRoute(routeCoords) {
   const airfieldSet = new Set(
@@ -215,17 +275,24 @@ class MapController {
     if (wasRunning) {
       window.flightSim.start();
     }
-    this.map.easeTo({
-      center: this.routeCoordinates[0],
-      pitch: 60,
-      bearing: turf.bearing(
-        turf.point(this.routeCoordinates[0]),
-        turf.point(this.routeCoordinates[1])
-      ),
-      zoom: 14,
-      duration: 500,
-      essential: true,
-    });
+
+    if (!this._overviewMode) {
+      this.showCockpitView();
+    } else {
+      this.showRouteOverview();
+    }
+
+    // this.map.easeTo({
+    //   center: this.routeCoordinates[0],
+    //   pitch: 60,
+    //   bearing: turf.bearing(
+    //     turf.point(this.routeCoordinates[0]),
+    //     turf.point(this.routeCoordinates[1])
+    //   ),
+    //   zoom: 14,
+    //   duration: 500,
+    //   essential: true,
+    // });
   }
 
   showRouteOverview() {
