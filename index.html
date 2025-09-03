@@ -17,12 +17,18 @@
   <body>
     <div id="map" tabindex="-1"></div>
     <div id="controls">
-      <button onclick="flightSim.start()" tabindex="-1">start</button>
+      <select id="routeSelector" tabindex="0">
+        <option value="NAV1">NAV1</option>
+        <option value="NAV2">NAV2</option>
+        <option value="NAV3">NAV3</option>
+      </select>
+      <button onclick="toggleMapView()" tabindex="-1">toggle view</button>
+      <button onclick="flightSim.start()" tabindex="-1">start animate</button>
       <button onclick="flightSim.stop()" tabindex="-1">stop</button>
-      <button onclick="flightSim.moveToNearestOnPath()" tabindex="-1">back to path</button>
-      <button onclick="flightSim.step()" tabindex="1">forward</button>
-      <button onclick="flightSim.step(false)" tabindex="2">back</button>
+      <button onclick="flightSim.step(1)" tabindex="1">move forward</button>
+      <button onclick="flightSim.step(-1)" tabindex="2">move backward</button>
     </div>
+    <script src="./points.js" type="text/javascript"></script>
     <script src="./map.js" type="text/javascript"></script>
   </body>
 </html>

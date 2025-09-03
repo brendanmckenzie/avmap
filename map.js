@@ -1,193 +1,272 @@
-function dmsToDecimal(input) {
-  // Store the sign of the input
-  const sign = input < 0 ? -1 : 1;
-  const absInput = Math.abs(input);
-  const dm = absInput / 100;
-  const seconds = absInput % 100;
-  const degrees = Math.floor(dm / 100);
-  const minutes = Math.floor(dm % 100);
-
-  // Calculate the decimal value from the absolute numbers
-  const decimalValue = degrees + minutes / 60 + seconds / 3600;
-
-  // Apply the sign to the final decimal value
-  return sign * decimalValue;
-}
-
-const knownPoints = {
-  YLEG: [145.86, -38.493333],
-  YLTV: [146.470278, -38.207222],
-  GMH: [145.238889, -38.008333],
-  YMMB: [145.102222, -37.975833],
-  YDRN: [145.83049, -38.20902],
-  YTDN: [145.427, -38.2167],
-  YBDG: [dmsToDecimal(1441947), dmsToDecimal(-364422)],
-  SGSV: [dmsToDecimal(1451800), dmsToDecimal(-374030)],
-  KIM: [dmsToDecimal(1445715), dmsToDecimal(-371800)],
-  KTN: [dmsToDecimal(1442730), dmsToDecimal(-371450)],
-  BMP: [dmsToDecimal(1442620), dmsToDecimal(-374030)],
-  TON: [dmsToDecimal(1444519), dmsToDecimal(-375119)],
-  WMS: [dmsToDecimal(1445440), dmsToDecimal(-375210)],
-  APL: [dmsToDecimal(1445830), dmsToDecimal(-375210)],
-  WBER: [dmsToDecimal(1443830), dmsToDecimal(-375400)],
-  YMAV: [dmsToDecimal(1442810), dmsToDecimal(-380222)],
-  YOLA: [dmsToDecimal(1434047), dmsToDecimal(-381711)],
-  YWBL: [dmsToDecimal(1422648), dmsToDecimal(-381743)],
-  PIPS: [dmsToDecimal(1443800), dmsToDecimal(-381736)],
-  MHT: [dmsToDecimal(1445900), dmsToDecimal(-381900)],
-  CARR: [dmsToDecimal(1450710), dmsToDecimal(-380427)],
+const knownPoints = window.avmap.knownPoints;
+const routes = {
+  NAV1: [
+    knownPoints.YMMB,
+    knownPoints.YLEG,
+    knownPoints.YLTV,
+    knownPoints.GMH,
+    knownPoints.YMMB,
+  ],
+  NAV2: [
+    knownPoints.YMMB,
+    knownPoints.SGSV,
+    knownPoints.KIM,
+    knownPoints.YBDG,
+    knownPoints.KTN,
+    knownPoints.BMP,
+    knownPoints.TON,
+    knownPoints.WMS,
+    knownPoints.YMMB,
+  ],
+  NAV3: [
+    knownPoints.YMMB,
+    knownPoints.APL,
+    knownPoints.TON,
+    knownPoints.WBER,
+    knownPoints.YMAV,
+    knownPoints.YOLA,
+    knownPoints.YWBL,
+    knownPoints.PIPS,
+    knownPoints.MHT,
+    knownPoints.CARR,
+    knownPoints.YMMB,
+  ],
 };
 
-// NAV.3
-const routeCoordinates = [
-  knownPoints.YMMB,
-  knownPoints.APL,
-  knownPoints.TON,
-  knownPoints.WBER,
-  knownPoints.YMAV,
-  knownPoints.YOLA,
-  knownPoints.YWBL,
-  knownPoints.PIPS,
-  knownPoints.MHT,
-  knownPoints.CARR,
-  knownPoints.YMMB,
-];
+function getAirfieldsForRoute(routeCoords) {
+  const airfieldSet = new Set(
+    Object.values(window.avmap.airfields).map(JSON.stringify)
+  );
+  return routeCoords.filter((pt) => airfieldSet.has(JSON.stringify(pt)));
+}
 
-const airfields = [
-  knownPoints.YMMB,
-  knownPoints.YOLA,
-  knownPoints.YWBL,
-  knownPoints.YMAV,
-];
-
-var map = new maplibregl.Map({
-  container: "map", // container id
-  zoom: 14,
-  center: knownPoints.YMMB,
-  pitch: 60,
-  bearing: turf.bearing(
-    turf.point(routeCoordinates[0]),
-    turf.point(routeCoordinates[1])
-  ),
-  maxZoom: 18,
-  maxPitch: 85,
-});
-
-map.setStyle(
-  "https://api.maptiler.com/maps/hybrid/style.json?key=fTwRS7pLGWeMWL0ySyT3",
-  {
-    transformStyle: (previousStyle, nextStyle) => {
-      nextStyle.projection = { type: "globe" };
-      nextStyle.sources = {
-        ...nextStyle.sources,
-        terrainSource: {
-          type: "raster-dem",
-          url: "https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=fTwRS7pLGWeMWL0ySyT3",
-          tileSize: 256,
-        },
-        hillshadeSource: {
-          type: "raster-dem",
-          url: "https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=fTwRS7pLGWeMWL0ySyT3",
-          tileSize: 256,
-        },
-      };
-      nextStyle.terrain = {
-        source: "terrainSource",
-        exaggeration: 1,
-      };
-
-      nextStyle.sky = {
-        "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 2, 0],
-      };
-
-      nextStyle.layers.push({
-        id: "hills",
-        type: "hillshade",
-        source: "hillshadeSource",
-        layout: { visibility: "visible" },
-        paint: { "hillshade-shadow-color": "#473B24" },
-      });
-
-      return nextStyle;
-    },
-  }
-);
-
-map.addControl(
-  new maplibregl.NavigationControl({
-    visualizePitch: true,
-    showZoom: true,
-    showCompass: true,
-  })
-);
-
-map.addControl(
-  new maplibregl.TerrainControl({
-    source: "terrainSource",
-    exaggeration: 1,
-  })
-);
-
-map.on("load", () => {
-  map.addSource("route", {
-    type: "geojson",
-    data: {
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: routeCoordinates,
-          },
-        },
-      ],
-    },
-  });
-
-  map.addLayer({
-    id: "route",
-    type: "line",
-    source: "route",
-    layout: {},
-    paint: {
-      "line-color": "#f00",
-      "line-width": 5,
-      "line-opacity": 1,
-    },
-  });
-
-  airfields
-    .filter((ent) => ent !== knownPoints.YMMB)
-    .map((pt, idx) => {
-      const centerPoint = turf.point(pt); // Your given point [longitude, latitude]
-
-      addCircle(centerPoint, 10, idx);
-
-      // Optionally, add a marker for the center point
-      new maplibregl.Marker()
-        .setLngLat(centerPoint.geometry.coordinates)
-        .addTo(map);
+class MapController {
+  constructor(mapContainerId) {
+    this.currentRouteKey = "NAV1";
+    this.routeCoordinates = routes[this.currentRouteKey];
+    this.airfields = getAirfieldsForRoute(this.routeCoordinates);
+    this.map = new maplibregl.Map({
+      container: mapContainerId,
+      zoom: 14,
+      center: this.routeCoordinates[0],
+      pitch: 60,
+      bearing: turf.bearing(
+        turf.point(this.routeCoordinates[0]),
+        turf.point(this.routeCoordinates[1])
+      ),
+      maxZoom: 18,
+      maxPitch: 85,
     });
-
-  addCircle(turf.point(knownPoints.YMMB), 3, "ymmb.3nm");
-
-  // Add half-way lines for each segment of the route
-  for (let i = 0; i < routeCoordinates.length - 1; i++) {
-    addHalfWayLine(routeCoordinates[i], routeCoordinates[i + 1], i);
+    this.map.setStyle(
+      "https://api.maptiler.com/maps/hybrid/style.json?key=fTwRS7pLGWeMWL0ySyT3",
+      {
+        transformStyle: (previousStyle, nextStyle) => {
+          nextStyle.projection = { type: "globe" };
+          nextStyle.sources = {
+            ...nextStyle.sources,
+            terrainSource: {
+              type: "raster-dem",
+              url: "https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=fTwRS7pLGWeMWL0ySyT3",
+              tileSize: 256,
+            },
+            hillshadeSource: {
+              type: "raster-dem",
+              url: "https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=fTwRS7pLGWeMWL0ySyT3",
+              tileSize: 256,
+            },
+          };
+          nextStyle.terrain = {
+            source: "terrainSource",
+            exaggeration: 1,
+          };
+          nextStyle.sky = {
+            "atmosphere-blend": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              1,
+              2,
+              0,
+            ],
+          };
+          nextStyle.layers.push({
+            id: "hills",
+            type: "hillshade",
+            source: "hillshadeSource",
+            layout: { visibility: "visible" },
+            paint: { "hillshade-shadow-color": "#473B24" },
+          });
+          return nextStyle;
+        },
+      }
+    );
+    this.map.on("load", () => {
+      this.renderAll();
+      this.setupFlightSim();
+    });
   }
 
-  // Create flight simulator controller
-  window.flightSim = new FlightSimulator(routeCoordinates, {
-    zoom: 14,
-    speedNm: 0.2,
-    pitch: 60,
-  });
-  // To start: window.flightSim.start()
-  // To pause: window.flightSim.pause()
-  // To step: window.flightSim.step()
-});
+  clearMap() {
+    // Remove previous sources/layers
+    if (this.map.getLayer("route")) this.map.removeLayer("route");
+    if (this.map.getSource("route")) this.map.removeSource("route");
+    // Remove airfield markers and circles
+    this.airfields.forEach((_, idx) => {
+      if (this.map.getLayer(`circle-outline-af${idx}`))
+        this.map.removeLayer(`circle-outline-af${idx}`);
+      if (this.map.getSource(`circle-outline-af${idx}`))
+        this.map.removeSource(`circle-outline-af${idx}`);
+      if (this.map.getLayer(`marker-af${idx}`))
+        this.map.removeLayer(`marker-af${idx}`);
+      if (this.map.getSource(`marker-af${idx}`))
+        this.map.removeSource(`marker-af${idx}`);
+    });
+    // Remove half-way lines
+    for (let i = 0; i < this.routeCoordinates.length - 1; i++) {
+      if (this.map.getLayer(`halfway-line-${i}`))
+        this.map.removeLayer(`halfway-line-${i}`);
+      if (this.map.getSource(`halfway-line-${i}`))
+        this.map.removeSource(`halfway-line-${i}`);
+    }
+  }
+  renderAll() {
+    this.clearMap();
+    this.renderRoute();
+    this.renderAirfields();
+    this.renderHalfWayLines();
+  }
+
+  renderRoute() {
+    this.map.addSource("route", {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: this.routeCoordinates,
+            },
+          },
+        ],
+      },
+    });
+    this.map.addLayer({
+      id: "route",
+      type: "line",
+      source: "route",
+      layout: {},
+      paint: {
+        "line-color": "#f00",
+        "line-width": 5,
+        "line-opacity": 1,
+      },
+    });
+  }
+
+  renderAirfields() {
+    this.airfields
+      .filter(
+        (ent) =>
+          JSON.stringify(ent) !== JSON.stringify(this.routeCoordinates[0])
+      )
+      .forEach((pt, idx) => {
+        const centerPoint = turf.point(pt);
+        addCircle(centerPoint, 10, idx);
+        new maplibregl.Marker()
+          .setLngLat(centerPoint.geometry.coordinates)
+          .addTo(this.map);
+      });
+    addCircle(turf.point(this.routeCoordinates[0]), 3, "start.3nm");
+  }
+
+  renderHalfWayLines() {
+    for (let i = 0; i < this.routeCoordinates.length - 1; i++) {
+      addHalfWayLine(this.routeCoordinates[i], this.routeCoordinates[i + 1], i);
+    }
+  }
+
+  setupFlightSim() {
+    window.flightSim = new FlightSimulator(this.routeCoordinates, {
+      zoom: 14,
+      speedNm: 0.2,
+      pitch: 60,
+    });
+  }
+
+  updateRoute(newRouteKey) {
+    // Stop previous flight simulation if running, and remember if it was running
+    let wasRunning = false;
+    if (window.flightSim && typeof window.flightSim.stop === "function") {
+      wasRunning = window.flightSim.running;
+      window.flightSim.stop();
+    }
+    this.currentRouteKey = newRouteKey;
+    this.routeCoordinates = routes[this.currentRouteKey];
+    this.airfields = getAirfieldsForRoute(this.routeCoordinates);
+    this.renderAll();
+    this.setupFlightSim();
+    // Create new FlightSimulator and reset to start
+    window.flightSim.reset();
+    // Only start if previous simulation was running
+    if (wasRunning) {
+      window.flightSim.start();
+    }
+    this.map.easeTo({
+      center: this.routeCoordinates[0],
+      pitch: 60,
+      bearing: turf.bearing(
+        turf.point(this.routeCoordinates[0]),
+        turf.point(this.routeCoordinates[1])
+      ),
+      zoom: 14,
+      duration: 500,
+      essential: true,
+    });
+  }
+
+  showRouteOverview() {
+    // Fit the map to the bounds of the route in a top-down view
+    const bounds = this.routeCoordinates.reduce((b, coord) => {
+      return b.extend(coord);
+    }, new maplibregl.LngLatBounds(this.routeCoordinates[0], this.routeCoordinates[0]));
+    this.map.fitBounds(bounds, {
+      padding: 50,
+      pitch: 0,
+      bearing: 0,
+      duration: 500,
+      essential: true,
+    });
+    this._overviewMode = true;
+  }
+
+  showCockpitView() {
+    // Restore cockpit/fly-along view at start of route
+    this.map.easeTo({
+      center: this.routeCoordinates[0],
+      pitch: 60,
+      bearing: turf.bearing(
+        turf.point(this.routeCoordinates[0]),
+        turf.point(this.routeCoordinates[1])
+      ),
+      zoom: 14,
+      duration: 500,
+      essential: true,
+    });
+    this._overviewMode = false;
+  }
+
+  toggleView() {
+    if (this._overviewMode) {
+      this.showCockpitView();
+    } else {
+      this.showRouteOverview();
+    }
+  }
+}
 
 // FlightSimulator controller for start, pause, and step functionality
 class FlightSimulator {
@@ -238,17 +317,16 @@ class FlightSimulator {
     const to = this.route[seg + 1];
     const position = this.interpolateCoord(from, to, t);
     const bearing = turf.bearing(turf.point(from), turf.point(to));
-    map.easeTo({
+    mapController.map.easeTo({
       center: position,
       pitch: this.pitch,
       bearing: bearing,
       zoom: this.zoom,
-      duration: 500, // Used for step, not for running animation
+      duration: 500,
       essential: true,
     });
   }
 
-  // Animate smoothly along each leg, waiting for moveend before next leg
   _animateLeg(seg) {
     if (!this.running || seg >= this.route.length - 1) {
       this.running = false;
@@ -257,10 +335,11 @@ class FlightSimulator {
     const from = this.route[seg];
     const to = this.route[seg + 1];
     const dist = this.segmentDistances[seg];
-    // Duration in ms: time = distance / speedNm * 1000
     const duration = (dist / this.speedNm) * 1000;
-    map.setBearing(turf.bearing(turf.point(from), turf.point(to)));
-    map.easeTo({
+    mapController.map.setBearing(
+      turf.bearing(turf.point(from), turf.point(to))
+    );
+    mapController.map.easeTo({
       center: to,
       pitch: this.pitch,
       bearing: turf.bearing(turf.point(from), turf.point(to)),
@@ -268,8 +347,7 @@ class FlightSimulator {
       duration: duration,
       essential: true,
     });
-    // Wait for movement to finish before next leg
-    map.once("moveend", () => {
+    mapController.map.once("moveend", () => {
       if (this.running) {
         this.distanceTraveled = this.cumulativeDistances[seg + 1];
         this._animateLeg(seg + 1);
@@ -280,7 +358,6 @@ class FlightSimulator {
   start() {
     if (this.running) return;
     this.running = true;
-    // Find current segment based on distanceTraveled
     let seg = 0;
     while (
       seg < this.segmentDistances.length &&
@@ -293,35 +370,32 @@ class FlightSimulator {
 
   stop() {
     this.running = false;
-    map.stop();
+    mapController.map.stop();
   }
 
-  step(forward = true) {
+  step(multiplier = 1) {
     if (this.running) return;
     if (this.distanceTraveled < this.totalDistance) {
-      this.distanceTraveled += (forward ? 1 : -1) * this.speedNm;
+      this.distanceTraveled += multiplier * this.speedNm;
       this._moveMap();
     }
   }
 
   reset() {
-    this.pause();
+    this.running = false;
     this.distanceTraveled = 0;
     this._moveMap();
   }
 
-  // Move to the nearest point on the route to the current map center
   moveToNearestOnPath() {
-    const center = map.getCenter();
+    const center = mapController.map.getCenter();
     const centerCoord = [center.lng, center.lat];
     let minDist = Infinity;
     let nearestSeg = 0;
     let nearestT = 0;
-    // Search each segment for closest point
     for (let i = 0; i < this.route.length - 1; i++) {
       const from = this.route[i];
       const to = this.route[i + 1];
-      // Project centerCoord onto segment
       const dx = to[0] - from[0];
       const dy = to[1] - from[1];
       const segLenSq = dx * dx + dy * dy;
@@ -333,7 +407,6 @@ class FlightSimulator {
             segLenSq;
       t = Math.max(0, Math.min(1, t));
       const proj = [from[0] + dx * t, from[1] + dy * t];
-      // Use turf.distance for accuracy
       const dist = turf.distance(turf.point(centerCoord), turf.point(proj), {
         units: "nauticalmiles",
       });
@@ -343,7 +416,6 @@ class FlightSimulator {
         nearestT = t;
       }
     }
-    // Compute cumulative distance to this point
     const segStartDist = this.cumulativeDistances[nearestSeg];
     const segLength = this.segmentDistances[nearestSeg];
     this.distanceTraveled = segStartDist + segLength * nearestT;
@@ -351,86 +423,51 @@ class FlightSimulator {
   }
 }
 
+// Helper function to add a circle outline to the map
 function addCircle(centerPoint, radius, idx) {
-  const options = { steps: 128, units: "nauticalmiles" }; // More steps for a smoother circle
-
-  // Calculate the circle's outline as a polygon (Turf.js returns a polygon by default)
+  const options = { steps: 128, units: "nauticalmiles" };
   const circlePolygon = turf.circle(centerPoint, radius, options);
-
-  // To get just the outline (LineString) from the polygon, we can extract its coordinates
-  // A simple way is to take the first ring of the polygon's coordinates.
-  // Note: If turf.circle() returned a simple LineString directly, it would be easier.
-  // For an outline, we want the first ring of the polygon's coordinates.
   const circleOutline = turf.lineString(circlePolygon.geometry.coordinates[0]);
-
   const id = "circle-outline-af" + idx;
-
   // Add a GeoJSON source to the map
-  map.addSource(id, {
+  if (mapController.map.getLayer(id)) {
+    mapController.map.removeLayer(id);
+  }
+  if (mapController.map.getSource(id)) {
+    mapController.map.removeSource(id);
+  }
+  mapController.map.addSource(id, {
     type: "geojson",
     data: circleOutline,
   });
-
   // Add a line layer to draw the circle outline
-  map.addLayer({
+  mapController.map.addLayer({
     id: id,
     type: "line",
     source: id,
     paint: {
-      "line-color": "#000",
+      "line-color": "#0f0",
       "line-width": 5,
     },
   });
 }
 
-// Function to calculate a point at a specific bearing and distance from a starting point
-function getPointAtBearingAndDistance(startPoint, bearing, distance) {
-  return turf.destination(startPoint, distance, bearing, {
-    units: "nauticalmiles",
-  });
-}
-
-// Function to calculate the bearing between two points
-function getBearing(point1, point2) {
-  const start = turf.point(point1);
-  const end = turf.point(point2);
-  return turf.bearing(start, end);
-}
-
-// Function to add a half-way line perpendicular to a route segment
+// Helper function to add a half-way line and markers
 function addHalfWayLine(point1, point2, id) {
-  // Calculate midpoint
   const start = turf.point(point1);
   const end = turf.point(point2);
   const midPoint = turf.midpoint(start, end);
-
-  // Calculate the distance traveled (estimated from the route segment length)
   const routeDistance = turf.distance(start, end, { units: "nauticalmiles" });
-
-  if (routeDistance < 10) {
-    return;
-  }
-
-  // Calculate bearing between points
+  if (routeDistance < 10) return;
   const routeBearing = turf.bearing(start, end);
-
-  // Calculate perpendicular bearing (90 degrees offset)
   const perpendicularBearing1 = (routeBearing + 90) % 360;
   const perpendicularBearing2 = (routeBearing - 90) % 360;
-
-  // Create points 5nm in each direction
-  const point1nm = getPointAtBearingAndDistance(
-    midPoint,
-    perpendicularBearing1,
-    5
-  );
-  const point2nm = getPointAtBearingAndDistance(
-    midPoint,
-    perpendicularBearing2,
-    5
-  );
-
-  // Create the half-way line
+  const point1nm = turf.destination(midPoint, 5, perpendicularBearing1, {
+    units: "nauticalmiles",
+  });
+  const point2nm = turf.destination(midPoint, 5, perpendicularBearing2, {
+    units: "nauticalmiles",
+  });
   const halfwayLine = {
     type: "Feature",
     properties: {},
@@ -442,15 +479,17 @@ function addHalfWayLine(point1, point2, id) {
       ],
     },
   };
-
-  // Add source for the line
-  map.addSource(`halfway-line-${id}`, {
+  if (mapController.map.getLayer(`halfway-line-${id}`)) {
+    mapController.map.removeLayer(`halfway-line-${id}`);
+  }
+  if (mapController.map.getSource(`halfway-line-${id}`)) {
+    mapController.map.removeSource(`halfway-line-${id}`);
+  }
+  mapController.map.addSource(`halfway-line-${id}`, {
     type: "geojson",
     data: halfwayLine,
   });
-
-  // Add layer for the line
-  map.addLayer({
+  mapController.map.addLayer({
     id: `halfway-line-${id}`,
     type: "line",
     source: `halfway-line-${id}`,
@@ -460,41 +499,35 @@ function addHalfWayLine(point1, point2, id) {
       "line-width": 2,
     },
   });
-
-  // Add markings at each nm for 1-in-60 rule
+  // Add markers for 1-in-60 rule
   for (let i = -5; i <= 5; i++) {
-    if (i === 0) continue; // Skip the center point
-
-    // Calculate position for each nm marking
+    if (i === 0) continue;
     const distance = Math.abs(i);
     const bearing = i > 0 ? perpendicularBearing1 : perpendicularBearing2;
-    const nmPoint = getPointAtBearingAndDistance(midPoint, bearing, distance);
-
-    // Calculate correction using 1-in-60 rule: (distance traveled * distance off course) / 60
-    const distanceOffCourse = Math.abs(i); // distance in nm from the route
-    const correction = Math.ceil(
-      2 * (distanceOffCourse / (routeDistance / 2)) * 60
-    );
-
-    // Add a circle marker for each nm point
+    const nmPoint = turf.destination(midPoint, distance, bearing, {
+      units: "nauticalmiles",
+    });
+    const correction = Math.ceil(2 * (distance / (routeDistance / 2)) * 60);
     const circleId = `nm-marker-${id}-${i}`;
     const pointFeature = {
       type: "Feature",
-      properties: {
-        correction: correction,
-      },
-      geometry: {
-        type: "Point",
-        coordinates: nmPoint.geometry.coordinates,
-      },
+      properties: { correction: correction },
+      geometry: { type: "Point", coordinates: nmPoint.geometry.coordinates },
     };
 
-    map.addSource(circleId, {
+    if (mapController.map.getLayer(circleId)) {
+      mapController.map.removeLayer(circleId);
+      mapController.map.removeLayer(`${circleId}-text`);
+    }
+    if (mapController.map.getSource(circleId)) {
+      mapController.map.removeSource(circleId);
+    }
+
+    mapController.map.addSource(circleId, {
       type: "geojson",
       data: pointFeature,
     });
-
-    map.addLayer({
+    mapController.map.addLayer({
       id: circleId,
       type: "circle",
       source: circleId,
@@ -505,9 +538,7 @@ function addHalfWayLine(point1, point2, id) {
         "circle-stroke-color": "#000",
       },
     });
-
-    // Add text label showing the correction value
-    map.addLayer({
+    mapController.map.addLayer({
       id: `${circleId}-text`,
       type: "symbol",
       source: circleId,
@@ -525,3 +556,18 @@ function addHalfWayLine(point1, point2, id) {
     });
   }
 }
+
+var mapController = new MapController("map");
+window.toggleMapView = function () {
+  mapController.toggleView();
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  var routeSelector = document.getElementById("routeSelector");
+  if (routeSelector) {
+    routeSelector.addEventListener("change", function (ev) {
+      var selectedRoute = ev.target.value;
+      mapController.updateRoute(selectedRoute);
+    });
+  }
+});
