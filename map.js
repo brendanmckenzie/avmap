@@ -50,6 +50,7 @@ const routes = {
     knownPoints.APL,
     knownPoints.YMEN,
     knownPoints.CARE,
+    knownPoints.ACE,
     knownPoints.YMMB,
   ],
   NAV7: [
@@ -90,12 +91,12 @@ Object.entries(routes).forEach(([key, pts]) =>
     if (!pt) {
       console.warn(`${key} has invalid point at idx ${idx + 1}`);
     }
-  })
+  }),
 );
 
 function getAirfieldsForRoute(routeCoords) {
   const airfieldSet = new Set(
-    Object.values(window.avmap.airfields).map(JSON.stringify)
+    Object.values(window.avmap.airfields).map(JSON.stringify),
   );
   return routeCoords.filter((pt) => airfieldSet.has(JSON.stringify(pt)));
 }
@@ -112,7 +113,7 @@ class MapController {
       pitch: 60,
       bearing: turf.bearing(
         turf.point(this.routeCoordinates[0]),
-        turf.point(this.routeCoordinates[1])
+        turf.point(this.routeCoordinates[1]),
       ),
       maxZoom: 18,
       maxPitch: 85,
@@ -159,7 +160,7 @@ class MapController {
           });
           return nextStyle;
         },
-      }
+      },
     );
     this.map.on("load", () => {
       this.renderAll();
@@ -231,7 +232,7 @@ class MapController {
     this.airfields
       .filter(
         (ent) =>
-          JSON.stringify(ent) !== JSON.stringify(this.routeCoordinates[0])
+          JSON.stringify(ent) !== JSON.stringify(this.routeCoordinates[0]),
       )
       .forEach((pt, idx) => {
         const centerPoint = turf.point(pt);
@@ -297,9 +298,15 @@ class MapController {
 
   showRouteOverview() {
     // Fit the map to the bounds of the route in a top-down view
-    const bounds = this.routeCoordinates.reduce((b, coord) => {
-      return b.extend(coord);
-    }, new maplibregl.LngLatBounds(this.routeCoordinates[0], this.routeCoordinates[0]));
+    const bounds = this.routeCoordinates.reduce(
+      (b, coord) => {
+        return b.extend(coord);
+      },
+      new maplibregl.LngLatBounds(
+        this.routeCoordinates[0],
+        this.routeCoordinates[0],
+      ),
+    );
     this.map.fitBounds(bounds, {
       padding: 50,
       pitch: 0,
@@ -317,7 +324,7 @@ class MapController {
       pitch: 60,
       bearing: turf.bearing(
         turf.point(this.routeCoordinates[0]),
-        turf.point(this.routeCoordinates[1])
+        turf.point(this.routeCoordinates[1]),
       ),
       zoom: 14,
       duration: 500,
@@ -404,7 +411,7 @@ class FlightSimulator {
     const dist = this.segmentDistances[seg];
     const duration = (dist / this.speedNm) * 1000;
     mapController.map.setBearing(
-      turf.bearing(turf.point(from), turf.point(to))
+      turf.bearing(turf.point(from), turf.point(to)),
     );
     mapController.map.easeTo({
       center: to,

@@ -22,6 +22,7 @@ window.avmap.airfieldsRaw = {
 };
 
 window.avmap.vfrWaypointsRaw = {
+  ACE: [1451050, -375345],
   APL: [1445830, -375210],
   BMP: [1442620, -374030],
   CARE: [1452500, -375730],
@@ -65,7 +66,7 @@ function dmsPointsToDecimal(input) {
     Object.entries(input).map(([k, [lon, lat]]) => [
       k,
       [dmsToDecimal(lon), dmsToDecimal(lat)],
-    ])
+    ]),
   );
 }
 
